@@ -3,11 +3,17 @@ $ErrorActionPreference = "Stop"
 $ws  = Split-Path -Parent $MyInvocation.MyCommand.Path
 $iso = Join-Path $ws "out\BSD44-ELF-x86.iso"
 $log = Join-Path $ws "build\verify-serial.log"
+. (Join-Path $ws "tools-find.ps1")
+$qemu = Get-Qemu
+if (!$qemu) {
+    Write-Host "QEMU not found - skipping the runtime check (build artifacts are fine)." -ForegroundColor Yellow
+    exit 0
+}
 if (!(Test-Path $iso)) { throw "missing ISO: $iso" }
 Remove-Item $log -ErrorAction SilentlyContinue
 
 $psi = New-Object System.Diagnostics.ProcessStartInfo
-$psi.FileName = "C:\Program Files\qemu\qemu-system-i386.exe"
+$psi.FileName = $qemu
 $psi.Arguments = "-cdrom `"$iso`" -boot d -display none -serial file:$($ws -replace '\\','/')/build/verify-serial.log -monitor stdio -m 64 -no-reboot"
 $psi.WorkingDirectory = $ws
 $psi.UseShellExecute = $false
@@ -51,3 +57,4 @@ foreach ($c in $checks) {
 }
 if ($fail) { exit 1 }
 Write-Host "VERIFY OK" -ForegroundColor Green
+

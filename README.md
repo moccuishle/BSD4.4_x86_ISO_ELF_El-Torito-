@@ -1,4 +1,4 @@
-﻿# BSD4.4_x86_ISO_ELF_El-Torito
+# BSD4.4_x86_ISO_ELF_El-Torito
 
 用 **MSYS2 mingw32 的 i386 GCC**（`i686-w64-mingw32-gcc 16.2.0`）编译
 **4.4BSD-Lite2 `sys/i386`** 的机器相关核心，生成 **UNIX System V ELF32
@@ -154,12 +154,38 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\verify.ps1
 应用修补，不需要再找源码。产物 `BSD44-ELF-x86.iso` / `BSD44.ELF` 也已在
 仓库根目录，即使不重新编译也能直接启动。
 
-依赖仍是本机这套工具链：
+### 在另一台 Windows 电脑上
 
-- `C:\msys64\mingw32` 的 i686-w64-mingw32-gcc **16.2.0**（脚本里写死了
-  `.../16.2.0/include`；换机器/换版本时改 `build_kernel.ps1` 的 `$gccinc`）
-- `C:\Program Files (x86)\VMware\VMware Workstation\mkisofs.exe`
-- `C:\Program Files\qemu\qemu-system-i386.exe`（仅 verify.ps1 需要）
+脚本会自动查找工具链，不再依赖固定路径（`bsd44/tools-find.ps1`）：
 
-新机器上这些路径不同的话，改三个脚本顶部的 `$bin` / `$gccinc` / `$MKISO` /
-QEMU 路径即可。
+| 工具 | 自动查找顺序 / 覆盖方式 |
+|---|---|
+| MSYS2 mingw32 | `%MSYS2_ROOT%`、`C:\msys64`、`C:\msys2`、`%ProgramFiles%\msys64`、PATH 里的 `i686-w64-mingw32-gcc` |
+| GCC include | `gcc -print-file-name=include`（自动跟随实际 GCC 版本） |
+| mkisofs | `%MKISOFS%`、VMware Workstation/Player、`C:\msys64\usr\bin\mkisofs.exe` 或 `xorriso.exe`、PATH |
+| QEMU | `%QEMU%`、`%ProgramFiles%\qemu\...`、PATH；找不到时 `verify.ps1` 跳过运行时检查并返回成功 |
+
+安装（任选）：
+
+```powershell
+# MSYS2: https://www.msys2.org
+pacman -S mingw-w64-i686-gcc mingw-w64-i686-binutils
+
+# ISO 工具：任选其一
+pacman -S cdrtools      # 或 xorriso
+# 或者安装 VMware Workstation，用自带的 mkisofs.exe
+
+# 可选，仅 verify.ps1 需要
+# 安装 QEMU for Windows
+```
+
+GCC 版本不必是 16.2.0：include 路径由 `gcc -print-file-name=include` 得到。
+不过内核是 1994 年的 K&R 代码，更新的 GCC 可能引入新的诊断；仓库默认参数在
+**16.2.0** 上验证通过。
+
+**不装工具链也能用**：仓库里已有 `BSD44-ELF-x86.iso` 与 `BSD44.ELF`，
+另一台电脑只要装 VMware 或 QEMU 就能直接启动，不需要编译。
+
+**Linux / macOS**：这些 `.ps1` 脚本不适用。需要 `i686-w64-mingw32-*`
+交叉工具链（或 i686-elf-gcc）并改写构建命令；COFF→PE→objcopy 的思路不变，
+`overlay/` 里的源码修补与引导器可以直接复用。

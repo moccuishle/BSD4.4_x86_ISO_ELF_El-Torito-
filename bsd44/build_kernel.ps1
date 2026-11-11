@@ -1,4 +1,4 @@
-# build_kernel.ps1 - cross-build the 4.4BSD-Lite2 i386 kernel as UNIX ELF
+﻿# build_kernel.ps1 - cross-build the 4.4BSD-Lite2 i386 kernel as UNIX ELF
 # using the MSYS2 mingw32 (i686-w64-mingw32) gcc.
 param(
     [switch]$NoLink,
@@ -12,14 +12,14 @@ $bld  = Join-Path $ws "build"
 $obj  = Join-Path $bld "obj"
 $inc  = Join-Path $bld "inc"
 $gen  = Join-Path $bld "gen"
-$bin  = "C:\msys64\mingw32\bin"
-$env:PATH = "$bin;C:\msys64\usr\bin;" + $env:PATH
+. (Join-Path $ws "tools-find.ps1")
+$bin  = Get-MingwBin
 $GCC  = "$bin\gcc.exe"
 $AS   = "$bin\as.exe"
 $LD   = "$bin\ld.exe"
 $OC   = "$bin\objcopy.exe"
 $OD   = "$bin\objdump.exe"
-$gccinc = "C:/msys64/mingw32/lib/gcc/i686-w64-mingw32/16.2.0/include"
+$gccinc = Get-GccInclude $bin
 
 New-Item -ItemType Directory -Force -Path $bld, $obj, $gen | Out-Null
 
@@ -242,6 +242,7 @@ if ($LASTEXITCODE -ne 0) { Write-Host "objcopy failed" -ForegroundColor Red; exi
 
 Write-Host "built $bld\bsd44.elf"
 & $OD -h "$bld\bsd44.elf" | Select-Object -First 12
+
 
 
 

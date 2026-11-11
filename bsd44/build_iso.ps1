@@ -10,10 +10,10 @@ $ws  = Split-Path -Parent $MyInvocation.MyCommand.Path
 $bld = Join-Path $ws "build"
 $boot= Join-Path $ws "boot"
 $out = Join-Path $ws "out"
-$bin = "C:\msys64\mingw32\bin"
-$env:PATH = "$bin;C:\msys64\usr\bin;" + $env:PATH
+. (Join-Path $ws "tools-find.ps1")
+$bin = Get-MingwBin
 $GCC = "$bin\gcc.exe"; $LD = "$bin\ld.exe"; $OC = "$bin\objcopy.exe"
-$MKISO = "C:\Program Files (x86)\VMware\VMware Workstation\mkisofs.exe"
+$MKISO = Get-Mkisofs
 $isodir = Join-Path $bld "isodir"
 if (!$Kernel) { $Kernel = Join-Path $bld "bsd44.elf" }
 if (!$OutIso) { $OutIso = Join-Path $out "BSD44-ELF-x86.iso" }
@@ -62,7 +62,9 @@ Copy-Item "$bld\boot.img" "$isodir\boot.img" -Force
 Copy-Item "$ws\README-ISO.txt" "$isodir\README.TXT" -Force -ErrorAction SilentlyContinue
 
 if (Test-Path $OutIso) { Remove-Item $OutIso -Force }
-& $MKISO -quiet -iso-level 1 -V "BSD44_ELF_X86" -b boot.img -c boot.cat `
+$mkArgs = @()
+if ([IO.Path]::GetFileNameWithoutExtension($MKISO) -eq "xorriso") { $mkArgs += @("-as", "mkisofs") }
+& $MKISO @mkArgs -quiet -iso-level 1 -V "BSD44_ELF_X86" -b boot.img -c boot.cat `
     -no-emul-boot -boot-load-size 8 -o $OutIso $isodir
 if ($LASTEXITCODE) { throw "mkisofs failed" }
 
@@ -78,6 +80,7 @@ $fs.Write($kbytes, 0, $kbytes.Length)
 $fs.Close()
 
 Write-Host ("ISO: {0} ({1:N0} bytes), kernel at LBA {2}" -f $OutIso, (Get-Item $OutIso).Length, $KernelLba)
+
 
 
 
