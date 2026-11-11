@@ -35,7 +35,10 @@ if (!(Test-Path "$src\i386\i386\locore.s") -or !(Test-Path "$src\sys\param.h")) 
     Write-Host "extracting $tarball"
     if (Test-Path $src) { Remove-Item $src -Recurse -Force -ErrorAction SilentlyContinue }
     New-Item -ItemType Directory -Force -Path "$ws\src" | Out-Null
-    & tar -xzf $tarball -C "$ws\src" 2>$null
+    # Use the Windows bsdtar: MSYS2's GNU tar (first on PATH here) mishandles
+    # Windows -C paths.  bsdtar also skips the tree's broken symlinks for us.
+    $tarExe = Join-Path $env:SystemRoot "System32\tar.exe"
+    & $tarExe -xzf $tarball -C "$ws\src" 2>$null
     if (!(Test-Path "$src\i386\i386\locore.s")) {
         throw "extraction failed: $src\i386\i386\locore.s missing"
     }

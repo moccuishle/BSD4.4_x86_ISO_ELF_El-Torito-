@@ -5,7 +5,7 @@ param(
     [int]$KernelLba = 2048
 )
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 $ws  = Split-Path -Parent $MyInvocation.MyCommand.Path
 $bld = Join-Path $ws "build"
 $boot= Join-Path $ws "boot"
@@ -78,6 +78,7 @@ $fs.Write($kbytes, 0, $kbytes.Length)
 $fs.Close()
 
 Write-Host ("ISO: {0} ({1:N0} bytes), kernel at LBA {2}" -f $OutIso, (Get-Item $OutIso).Length, $KernelLba)
+
 
 
 
