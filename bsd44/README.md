@@ -1,17 +1,23 @@
-# BSD44-ELF-x86 — 4.4BSD-Lite2 i386 ELF 可启动内核与 El Torito ISO
+﻿# BSD4.4_x86_ISO_ELF_El-Torito
 
-用 **MSYS2 mingw32 的 i386 GCC**（`i686-w64-mingw32-gcc 16.2.0`）编译真实的
-**4.4BSD-Lite2 `sys/i386`** 机器相关代码，生成 **UNIX System V ELF32 (Intel 80386)**
-内核，再装入一张 **El Torito 无仿真引导** 的 ISO。ISO 里的内核是 ELF，不是 PE/EXE。
+用 **MSYS2 mingw32 的 i386 GCC**（`i686-w64-mingw32-gcc 16.2.0`）编译
+**4.4BSD-Lite2 `sys/i386`** 的机器相关核心，生成 **UNIX System V ELF32
+(Intel 80386)** 内核，并做成 **El Torito 无仿真引导** 的 ISO。
+ISO 里的内核是 **ELF**，不是 PE/EXE。
 
-```
-out/BSD44-ELF-x86.iso     4.4BSD-Lite2 i386 ELF 内核 + El Torito 引导
-out/BSD44.ELF             同一内核（ELF32 EXEC，Intel 80386）
-```
+![screenshot](screenshot.png)
 
-## 1. 结果
+## 产物
 
-QEMU / VMware 从光盘启动后，串口与 VGA 同时输出：
+| 文件 | 说明 |
+|---|---|
+| `BSD44-ELF-x86.iso` | 4.5 MB，VMware / QEMU 可直接从光盘启动 |
+| `BSD44.ELF` | 内核：`ELF32 EXEC, Intel 80386`，KERNBASE `0xFE000000`，无 SSE/MMX |
+| `screenshot.png` | QEMU 中 VGA 文本控制台实拍 |
+| `bsd44/` | 完整工程：构建脚本、引导器、内核 glue、文档、VMware vmx |
+| `4.4BSD-Lite2.tar.gz` | 原始 4.4BSD-Lite2 源码（构建时自动解包） |
+
+启动后串口/VGA 输出：
 
 ```
 4.4BSD-Lite2 (i386) ELF kernel
@@ -23,10 +29,7 @@ VM: virtual_avail fe0bd000 virtual_end ff7ff000
 BSD/386 monitor - type 'help' for commands
 bsd44> mem
 Maxmem    16384 pages  (67108864K)
-physmem   16288 pages  (66715648K)
-avail     100000 - 3ffe000
-virt      fe0bd000 - ff7ff000
-kernel    text fe004228 data fe047000 end fe049000
+...
 bsd44> map
 mapped page at 0xfe0bd000
 pte new page: 100063
@@ -34,140 +37,129 @@ readback 4f534442 444e4521
 ok
 ```
 
-`map` 命令调用的是 4.4BSD 真正的 `pmap_bootstrap_alloc()`
-→ `pmap_map()` → `pmap_enter()` 路径，把物理页映射到内核虚拟地址后再写回验证。
+`map` 走的是 4.4BSD 真正的 `pmap_bootstrap_alloc() → pmap_map() →
+pmap_enter()` 路径。
 
-`readelf -h build/bsd44.elf`：
+## 构建
 
-```
-Class:      ELF32
-Data:       2's complement, little endian
-Type:       EXEC (Executable file)
-Machine:    Intel 80386
-Entry:      0xfe001000
-```
-
-`objdump -d` 中没有任何 `xmm/ymm/mm0-7` 指令（`-march=i386 -mno-sse -mno-mmx`）。
-
-## 2. 目录
-
-| 路径 | 说明 |
-|---|---|
-| `build_kernel.ps1` | 头文件准备、编译、两遍链接、COFF→ELF |
-| `build_iso.ps1` | 编译 stage1/stage2、生成 El Torito 引导镜像、mkisofs、附加内核 |
-| `build_all.ps1` | 一键构建内核 + ISO |
-| `verify.ps1` | 用 QEMU 启动 ISO、发送 `mem` 命令、检查串口输出 |
-| `boot/stage1.s` | 16 位实模式引导：INT 13h EDD 读 ELF 到 0x10000，进保护模式 |
-| `boot/stage2.s` | 32 位 ELF 加载器：解析 PT_LOAD，按 `p_vaddr-KERNBASE` 装载，跳 `e_entry` |
-| `kernel/glue.c` | `proc0`/`curproc`、kprintf、`vm_set_page_size`、`trap`、`main` |
-| `kernel/pccon.c` | VGA 文本 + COM1 双路控制台，接 4.4BSD `cons.c` 的 `consdev` |
-| `kernel/mon.c` | 板载 monitor：`help/mem/pte/map/banner/reboot/halt` |
-| `kernel/stubs.c` | 极小内核服务：`malloc/free`、`pg`、`isa_strayintr`、`__main` 等 |
-| `kernel/strings.c` | `strncmp/memcpy/memset/memmove` |
-| `src/4.4BSD-Lite2` | 解包后的源码树 |
-| `build/inc` | 编译用头文件视图（`sys/ vm/ machine/ i386/ libkern/`） |
-| `build/gen` | 代替 `config(8)` 生成的头：`isa.h NISA 0`、`com.h NCOM 0` |
-| `out/` | 最终 ISO 与 ELF |
-
-## 3. 工具链（全部在本机 C:\msys64，无网络）
+依赖（本机路径）：
 
 ```
-C:\msys64\mingw32\bin\gcc.exe      i686-w64-mingw32-gcc 16.2.0
-C:\msys64\mingw32\bin\ld.exe       GNU ld 2.47（仅 i386pe）
-C:\msys64\mingw32\bin\objcopy.exe  支持 -O elf32-i386
+C:\msys64\mingw32\bin\gcc.exe        i686-w64-mingw32-gcc 16.2.0
+C:\msys64\mingw32\bin\ld.exe          GNU ld 2.47 (i386pe)
+C:\msys64\mingw32\bin\objcopy.exe     支持 -O elf32-i386
 C:\Program Files (x86)\VMware\VMware Workstation\mkisofs.exe
 C:\Program Files\qemu\qemu-system-i386.exe
 ```
 
-关键点：mingw 的 `gcc -c` 输出 COFF，`ld` 只有 `i386pe` 仿真，不能直接
-`--oformat elf32-i386`。做法是：
-
-1. `gcc -m32 -c ...` 生成 COFF；
-2. `ld -m i386pe --image-base 0xFE000000 -Ttext 0xFE001000` 在 PE 里完成重定位；
-3. `objcopy -O elf32-i386` 把链接结果转成 **ET_EXEC** 的 ELF32；
-4. 用 `--defsym _end/_edata/_etext=` 把 4.4BSD `locore.s` 需要的边界符号精确补上。
-
-`gcc -B C:/msys64/mingw32/bin/` 是必须的：否则驱动找不到 `as.exe`。
-
-## 4. 引导链
-
-BIOS → El Torito（no-emulation）把 `boot.img` 装到 `0x7C00`。
-
-**stage1（512 B，实模式）**
-- 从镜像内 `BDMF` manifest 取内核 LBA（2048）和字节数；
-- INT 13h AH=42h 扩展读，按 **CD 的 2048 字节扇区** 每次 16 扇区读入 `0x10000`；
-- 把 stage2 复制到 `0x90000`，开 A20，装 GDT，进保护模式。
-
-**stage2（32 位，链接在 0x90000）**
-- 把 ELF 头快照到 `0x8F000`（后面会被段数据覆盖）；
-- 逐条 `PT_LOAD`：`dst = p_vaddr - 0xFE000000`，`rep movsb`，再清 `p_memsz-p_filesz`；
-- 压入 `howto/bootdev/unit/cyloffset`，`jmp e_entry - 0xFE000000`（即 `start`）。
-
-**内核入口**
-`locore.s:start` 自行建立 GDT/页表，把物理 0..kernel_end 映射到
-`0xFE000000+`，再 `call init386` → GDT/IDT/LDT/TSS、RTC 测内存、
-`pmap_bootstrap()`，然后进入我们提供的 `main()` 和 monitor。
-
-## 5. 编译
-
 ```powershell
-cd C:\Users\Administrator\Desktop\work2
+cd bsd44
 powershell -NoProfile -ExecutionPolicy Bypass -File .\build_all.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\verify.ps1
 ```
 
-或分开：
+`build_kernel.ps1` 会自动：
 
-```powershell
-.\build_kernel.ps1     # -> build\bsd44.elf
-.\build_iso.ps1        # -> out\BSD44-ELF-x86.iso
-.\verify.ps1           # QEMU 启动并检查
+1. 若 `src/` 不存在，把上层目录的 `4.4BSD-Lite2.tar.gz` 解包；
+2. 把 `overlay/` 里针对现代 GCC 修补过的 4 个文件覆盖上去；
+3. 准备 `machine/ sys/ vm/ i386/ libkern/` 头文件视图；
+4. `gcc -m32 -c` → `ld -m i386pe --image-base 0xFE000000` →
+   `objcopy -O elf32-i386`，得到 `ET_EXEC` ELF32；
+5. 用 `--defsym _end/_edata/_etext` 补齐 `locore.s` 需要的边界符号。
+
+工具链关键点：mingw 的 `ld` 只有 `i386pe` 仿真，不能直接
+`--oformat elf32-i386`；必须先链接成 PE 再 `objcopy` 成 ELF。
+`gcc -B C:/msys64/mingw32/bin/` 必须有，否则驱动找不到 `as.exe`。
+
+## 引导链
+
+```
+BIOS → El Torito (no-emulation) 加载 boot.img 到 0x7C00
+  stage1 (512 B, 实模式)
+    - 从镜像内 BDMF manifest 读内核 LBA (2048) 和字节数
+    - INT 13h AH=42h，按 CD 的 2048 字节扇区，每次 16 扇区读入 0x10000
+    - 复制 stage2 到 0x90000，开 A20，装 GDT，进保护模式
+  stage2 (32 位, 链接在 0x90000)
+    - 快照 ELF 头到 0x8F000
+    - 每个 PT_LOAD: dst = p_vaddr - 0xFE000000，rep movsb，清 bss
+    - 压 howto/bootdev/unit/cyloffset，跳 e_entry - 0xFE000000
+内核 locore.s:start
+    - 自建 GDT/页表，物理 0..kernel_end 映射到 0xFE000000+
+    - call init386: GDT/IDT/LDT/TSS、RTC 测内存、pmap_bootstrap
+    - main() → 板载 monitor
 ```
 
-## 6. 启动
+## 4.4BSD 原文件
 
-**QEMU**
+以下文件来自 `sys/i386`，未重写：
 
-```powershell
-& "C:\Program Files\qemu\qemu-system-i386.exe" -cdrom out\BSD44-ELF-x86.iso -boot d -m 64 -serial stdio
-```
+- `i386/i386/locore.s`（Jolitz）
+- `i386/i386/pmap.c`（Mach pmap，Reno i386 版）
+- `i386/i386/machdep.c`（`init386`、`setidt` 等）
+- `i386/i386/cons.c`（控制台抽象层）
+- `i386/isa/icu.s`（8259、`spl*`、`doreti`）
 
-**VMware**：`vms\BSD44-ELF-x86.vmx` 已指向 `..\out\BSD44-ELF-x86.iso`，
-在 VMware Workstation 里 File → Open 打开该 vmx 即可。ISO 是标准
-El Torito，VMware 的 PhoenixBIOS 直接识别。
+`kernel/` 下是本项目补的 glue：`main`、kprintf、`proc0`、VGA+COM1 驱动、
+trap、monitor、少量 stub。
 
-## 7. 为现代 GCC 做的移植修补
-
-4.4BSD-Lite2 的 i386 代码是 1993 年用旧 GCC + a.out 工具链写的，直接喂给
-GCC 16 + PE 链接器需要少量修正（均已写入源码树，`src/` 中是修补后的副本）：
+## 现代 GCC 修补（overlay/）
 
 | 文件 | 修补 | 原因 |
 |---|---|---|
-| `i386/i386/locore.s` | `ENTRY/ALTENTRY/IDTVEC` 改 `_##name`；`movb %eax`→`%al`；`movl %ax,%ds`→`movw` | 现代 cpp 把 `/**/` 变成空格；gas 拒绝寄存器宽度不匹配 |
-| `i386/i386/locore.s` | 增加 `#include "icu.h"`、`"isa.h"`（在 `icu.s` 中） | 原构建由 config 生成的 `isa.h` 提供 `IO_ICU1` 等常量 |
-| `i386/i386/pmap.c` | `static boolean_t pmap_testbit();` | C99 起 static 后置声明是错误 |
-| `i386/i386/machdep.c` | `sendsig(..., u_long code)`、`extern const char *panicstr` | 与头文件原型一致 |
-| `i386/i386/machdep.c` | `lgdt(&r_gdt); lidt(&r_idt);` 取代两参调用 | 本树 `locore.s` 的 `lgdt` 只接受 `region_descriptor *` |
-| `i386/include/segments.h` | `region_descriptor` 改 6 字节 packed；`segment_descriptor` 改为两个 32 位字 | GCC 16 的 16+24 位域跨 32 位单元，结构体变 12 字节，GDT 步长错 |
-| `i386/include/types.h`（生成视图） | 补 `register_t` | 本 tarball 的 i386 头缺此 typedef |
-| `machine/ansi.h`、`limits.h`、`float.h` | 从 `hp300/include` 借通用定义 | i386 目录缺这三个机器头 |
-| `machine/endian.h`、`machine/stdarg.h` | 新建 | i386 tarball 缺；`stdarg.h` 转发到 GCC 内建 |
+| `locore.s` | `ENTRY/ALTENTRY/IDTVEC` 改 `_##name`；`movb %eax`→`%al`；`movl %ax,%ds`→`movw` | 现代 cpp 把 `/**/` 变成空格；gas 拒绝寄存器宽度不匹配 |
+| `icu.s`（构建时 include） | 增加 `#include "icu.h"`、`"isa.h"` | 原构建由 config 提供 `IO_ICU1` 等常量 |
+| `pmap.c` | `static boolean_t pmap_testbit();` | C99 起 static 后置声明是错误 |
+| `machdep.c` | `sendsig(..., u_long code)`、`const char *panicstr` | 与头文件原型一致 |
+| `machdep.c` | `lgdt(&r_gdt); lidt(&r_idt);` | 本树 `lgdt` 只接受 `region_descriptor *` |
+| `segments.h` | `region_descriptor` 6 字节 packed；`segment_descriptor` 两个 32 位字 | GCC 16 的 16+24 位域跨 32 位单元，GDT 步长错 |
 
-另外：`-fcommon`（K&R 暂定定义）、`-fno-pie -fno-pic`、`-mno-ms-bitfields`、
-`-mpreferred-stack-boundary=2`、`-ffunction-sections` + `--gc-sections`
-（丢掉本 bring-up 内核不用的 machdep 函数）。
+详细清单与构建参数见 [`bsd44/README.md`](bsd44/README.md)。
 
-## 8. 边界说明（重要）
+## 启动
 
-这是一颗 **可启动的 4.4BSD-Lite2 i386 内核固件**：机器相关核心
-（`locore.s`、`pmap.c`、`machdep.c`、`cons.c`、`icu.s`）是源码树里的原文件；
-它完成保护模式、分页、GDT/IDT/TSS、物理内存探测、Mach pmap 引导，并提供
-板载 monitor。
+```powershell
+# QEMU
+& "C:\Program Files\qemu\qemu-system-i386.exe" `
+  -cdrom BSD44-ELF-x86.iso -boot d -m 64 -serial stdio
 
-它**不是**完整的 4.4BSD 用户态系统：没有 VFS/root 文件系统、没有 `init(8)`、
-没有 `exec` 用户进程，因此 ISO 里没有 BSD 的 `/bin/sh` 等 a.out/ELF 用户程序。
-“ISO 内装 ELF 内核 + El Torito 引导” 这一目标已达成；内核本身是
-`ELF32 EXEC, Intel 80386`，不是 PE。
+# VMware: File -> Open -> bsd44\vms\BSD44-ELF-x86.vmx
+```
 
-如果后续要跑用户态，需要在这颗内核上补 `vm_page`/`vm_map` 初始化、块设备
-驱动（wd/ata）、FFS 与 `execve`，再把 4.4BSD 的 `libc`/`sh` 交叉编译成
-i386 ELF 放进 ISO。当前的 `pmap_enter`/`pmap_map` 已经可用，是这条路的起点。
+## 边界说明
+
+这是一颗 **可启动的 4.4BSD-Lite2 i386 内核固件**：保护模式、分页、
+GDT/IDT/TSS、物理内存探测、Mach pmap 引导、可交互 monitor 均已跑通。
+
+它**不是**完整用户态系统：没有 VFS/root 文件系统、没有 `init(8)`/
+`execve`，因此 ISO 里没有 BSD 的 `/bin/sh` 等用户程序。
+“ISO 内装 ELF 内核 + El Torito 引导、内核不是 PE”这一目标已达成。
+
+## 许可
+
+`4.4BSD-Lite2.tar.gz` 与 `bsd44/overlay/` 中的 4.4BSD 代码遵循其原始
+BSD 版权许可以及 UC Berkeley 的 advertising 条款；本项目新增的脚本、
+引导器与 glue 代码可视为同一 BSD 风格许可。
+
+## 从仓库恢复 / 重建
+
+```bash
+# 防火墙可能会重置 HTTPS 大文件传输，用 SSH 更稳（本机已配置 key）
+git clone git@github.com:moccuishle/BSD4.4_x86_ISO_ELF_El-Torito-.git
+cd BSD4.4_x86_ISO_ELF_El-Torito-/bsd44
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build_all.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\verify.ps1
+```
+
+仓库自带 `4.4BSD-Lite2.tar.gz`、`overlay/` 与全部脚本，构建时会自动解包并
+应用修补，不需要再找源码。产物 `BSD44-ELF-x86.iso` / `BSD44.ELF` 也已在
+仓库根目录，即使不重新编译也能直接启动。
+
+依赖仍是本机这套工具链：
+
+- `C:\msys64\mingw32` 的 i686-w64-mingw32-gcc **16.2.0**（脚本里写死了
+  `.../16.2.0/include`；换机器/换版本时改 `build_kernel.ps1` 的 `$gccinc`）
+- `C:\Program Files (x86)\VMware\VMware Workstation\mkisofs.exe`
+- `C:\Program Files\qemu\qemu-system-i386.exe`（仅 verify.ps1 需要）
+
+新机器上这些路径不同的话，改三个脚本顶部的 `$bin` / `$gccinc` / `$MKISO` /
+QEMU 路径即可。

@@ -1,4 +1,4 @@
-# BSD4.4_x86_ISO_ELF_El-Torito
+﻿# BSD4.4_x86_ISO_ELF_El-Torito
 
 用 **MSYS2 mingw32 的 i386 GCC**（`i686-w64-mingw32-gcc 16.2.0`）编译
 **4.4BSD-Lite2 `sys/i386`** 的机器相关核心，生成 **UNIX System V ELF32
@@ -139,3 +139,27 @@ GDT/IDT/TSS、物理内存探测、Mach pmap 引导、可交互 monitor 均已�
 `4.4BSD-Lite2.tar.gz` 与 `bsd44/overlay/` 中的 4.4BSD 代码遵循其原始
 BSD 版权许可以及 UC Berkeley 的 advertising 条款；本项目新增的脚本、
 引导器与 glue 代码可视为同一 BSD 风格许可。
+
+## 从仓库恢复 / 重建
+
+```bash
+# 防火墙可能会重置 HTTPS 大文件传输，用 SSH 更稳（本机已配置 key）
+git clone git@github.com:moccuishle/BSD4.4_x86_ISO_ELF_El-Torito-.git
+cd BSD4.4_x86_ISO_ELF_El-Torito-/bsd44
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build_all.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\verify.ps1
+```
+
+仓库自带 `4.4BSD-Lite2.tar.gz`、`overlay/` 与全部脚本，构建时会自动解包并
+应用修补，不需要再找源码。产物 `BSD44-ELF-x86.iso` / `BSD44.ELF` 也已在
+仓库根目录，即使不重新编译也能直接启动。
+
+依赖仍是本机这套工具链：
+
+- `C:\msys64\mingw32` 的 i686-w64-mingw32-gcc **16.2.0**（脚本里写死了
+  `.../16.2.0/include`；换机器/换版本时改 `build_kernel.ps1` 的 `$gccinc`）
+- `C:\Program Files (x86)\VMware\VMware Workstation\mkisofs.exe`
+- `C:\Program Files\qemu\qemu-system-i386.exe`（仅 verify.ps1 需要）
+
+新机器上这些路径不同的话，改三个脚本顶部的 `$bin` / `$gccinc` / `$MKISO` /
+QEMU 路径即可。
