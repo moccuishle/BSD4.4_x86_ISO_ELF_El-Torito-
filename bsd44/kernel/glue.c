@@ -193,7 +193,6 @@ panic(const char *fmt, ...)
 void
 trap(struct trapframe *frame)
 {
-	outb(0xE9, 'T');
 	static const char *trapname[] = {
 		"divide", "debug", "nmi", "breakpoint", "overflow", "bounds",
 		"invalid opcode", "no coprocessor", "double fault",

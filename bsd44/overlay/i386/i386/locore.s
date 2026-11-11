@@ -1626,7 +1626,9 @@ alltraps:
 	movw	%ax,%es
 calltrap:
 	incl	_cnt+V_TRAP
+	pushl	%esp
 	call	_trap
+	addl	$4,%esp
 	/*
 	 * Return through doreti to handle ASTs.  Have to change trap frame
 	 * to interrupt frame.

@@ -186,8 +186,9 @@ pccngetc(dev_t dev)
 	static const char *map;
 	int c;
 
-	if (inb(COM1_LSR) & 0x01)
+	if (inb(COM1_LSR) & 0x01) {
 		return (inb(COM1));
+	}
 
 	if ((inb(0x64) & 0x01) == 0)
 		return (0);

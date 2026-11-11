@@ -704,7 +704,7 @@ cpu_sysctl(name, namelen, oldp, oldlenp, newp, newlen, p)
 union descriptor gdt[GPROC0_SEL+1];
 
 /* interrupt descriptor table */
-struct gate_descriptor idt[32+16];
+struct gate_descriptor idt[256];
 
 /* local descriptor table */
 union descriptor ldt[5];

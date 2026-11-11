@@ -23,6 +23,7 @@
 extern vm_offset_t avail_start, avail_end, virtual_avail, virtual_end;
 extern int KPTphys;
 extern int Maxmem, physmem;
+extern void start_userland(void);
 extern int IdlePTD;
 extern char etext[], edata[], end[];
 
@@ -167,11 +168,13 @@ monitor(void)
 
 		if (!strcmp(line, "help"))
 			printf("help  mem  pte <addr>  map  banner  "
-			    "reboot  halt\n");
+			    "usermode  reboot  halt\n");
 		else if (!strcmp(line, "mem"))
 			cmd_mem();
 		else if (!strncmp(line, "pte", 3))
 			cmd_pte(line + 3);
+		else if (!strcmp(line, "usermode"))
+			start_userland();
 		else if (!strcmp(line, "map"))
 			cmd_map();
 		else if (!strcmp(line, "banner"))

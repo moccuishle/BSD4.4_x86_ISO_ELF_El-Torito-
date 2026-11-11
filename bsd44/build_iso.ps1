@@ -77,9 +77,15 @@ $fs = [IO.File]::Open($OutIso, [IO.FileMode]::Append)
 $pad = New-Object byte[] ($target - $isoBytes.Length)
 $fs.Write($pad, 0, $pad.Length)
 $fs.Write($kbytes, 0, $kbytes.Length)
+# CD sectors are 2048 bytes; stage1 reads whole sectors, so pad the last one.
+$pad2 = (2048 - ($kbytes.Length % 2048)) % 2048
+if ($pad2 -gt 0) {
+    $fs.Write((New-Object byte[] $pad2), 0, $pad2)
+}
 $fs.Close()
 
 Write-Host ("ISO: {0} ({1:N0} bytes), kernel at LBA {2}" -f $OutIso, (Get-Item $OutIso).Length, $KernelLba)
+
 
 
 

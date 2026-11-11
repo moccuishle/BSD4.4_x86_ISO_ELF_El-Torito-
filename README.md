@@ -1,4 +1,4 @@
-# BSD4.4_x86_ISO_ELF_El-Torito
+﻿# BSD4.4_x86_ISO_ELF_El-Torito
 
 用 **MSYS2 mingw32 的 i386 GCC**（`i686-w64-mingw32-gcc 16.2.0`）编译
 **4.4BSD-Lite2 `sys/i386`** 的机器相关核心，生成 **UNIX System V ELF32
@@ -189,3 +189,16 @@ GCC 版本不必是 16.2.0：include 路径由 `gcc -print-file-name=include` �
 **Linux / macOS**：这些 `.ps1` 脚本不适用。需要 `i686-w64-mingw32-*`
 交叉工具链（或 i686-elf-gcc）并改写构建命令；COFF→PE→objcopy 的思路不变，
 `overlay/` 里的源码修补与引导器可以直接复用。
+
+## 用户态进度（S1）
+
+- 已实现：用户页目录/栈、`PG_u` 用户映射、静态 ELF32 装载、
+  `int 0x80` 门、`write`/`exit` 系统调用；
+- monitor 里执行 `usermode` 会进入 ring3，运行内嵌的
+  `out/userland/hello.elf`：
+  `hello from user mode (ELF32 i386)`；
+- 尚未实现：ramfs/VFS、`init`、`execve`、BSD `libc`/`sh`。
+  路线与验收标准见 [`bsd44/docs/USERLAND-PLAN.md`](bsd44/docs/USERLAND-PLAN.md)。
+
+用户态程序用 `bsd44/build_userland.ps1` 构建：COFF → PE(0x08048000) →
+`objcopy -O elf32-i386`，内核的 loader 只接受静态 `ET_EXEC` ELF32。
